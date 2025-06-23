@@ -14,7 +14,7 @@
 
   "version": "1.0.0",
 
-  "main": "db.js",
+  "main": "server.js",
 
   "author": "",
 

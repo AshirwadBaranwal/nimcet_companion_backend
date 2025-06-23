@@ -29,8 +29,8 @@ export const register = async (req, res) => {
     const token = await userCreated.generateToken();
     res.cookie("token", token, {
       httpOnly: true,
-      sameSite: "Lax",
-      secure: false, // set to true in production
+      sameSite: "strict",
+      secure: true, // set to true in production
     });
     res.status(200).json({
       msg: "registered successfully",
@@ -58,8 +58,8 @@ export const login = async (req, res) => {
       const token = await userExist.generateToken();
       res.cookie("token", token, {
         httpOnly: true,
-        sameSite: "Lax",
-        secure: false,
+        sameSite: "strict",
+        secure: true,
       });
       res.status(200).json({
         msg: "Login Successfull",
