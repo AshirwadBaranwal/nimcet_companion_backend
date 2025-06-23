@@ -9,9 +9,9 @@ const app = express();
 
 app.use(
   cors({
-    origin: ["http://localhost:5173", "https://nimcet-companion.vercel.app"],
-    methods: "GET, POST, PUT, PATCH, DELETE, HEAD ",
-    Credentials: true,
+    origin: ["http://localhost:5173", "https://nimcet-companion.vercel.app"], // ✅ remove trailing slashes
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"],
+    credentials: true, // ✅ correct key
   })
 );
 
