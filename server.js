@@ -7,20 +7,22 @@ import cookieParser from "cookie-parser";
 
 const app = express();
 
+app.use(cookieParser());
 app.use(
   cors({
-    origin: ["http://localhost:5173", "https://nimcet-companion.vercel.app"], // ✅ remove trailing slashes
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"],
-    credentials: true, // ✅ correct key
+    origin: ["http://localhost:5173", "https://nimcet-companion.vercel.app"],
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"],
+    credentials: true,
+    allowedHeaders: ["Content-Type", "Authorization", "Cookie"], // Add this
+    exposedHeaders: ["Set-Cookie"], // Add this
   })
-);
+);  
 
 dotenv.config({
   path: "./.env",
 });
 
 app.use(express.json());
-app.use(cookieParser());
 
 app.use((req, res, next) => {
   console.log(`${req.method} ${req.url}`);

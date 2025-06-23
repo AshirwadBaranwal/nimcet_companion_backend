@@ -27,10 +27,12 @@ export const register = async (req, res) => {
 
     const userCreated = await User.create({ username, email, phone, password });
     const token = await userCreated.generateToken();
+    const isProduction = process.env.NODE_ENV === "production";
+
     res.cookie("token", token, {
       httpOnly: true,
-      sameSite: "strict",
-      secure: true, // set to true in production
+      secure: isProduction, // Only secure in production
+      sameSite: isProduction ? "None" : "Lax", // Use Lax for localhost testing
     });
     res.status(200).json({
       msg: "registered successfully",
@@ -56,10 +58,12 @@ export const login = async (req, res) => {
     const user = await userExist.comparePassword(password);
     if (user) {
       const token = await userExist.generateToken();
+      const isProduction = process.env.NODE_ENV === "production";
+
       res.cookie("token", token, {
         httpOnly: true,
-        sameSite: "strict",
-        secure: true,
+        secure: isProduction, // Only secure in production
+        sameSite: isProduction ? "None" : "Lax", // Use Lax for localhost testing
       });
       res.status(200).json({
         msg: "Login Successfull",
