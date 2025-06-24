@@ -113,9 +113,21 @@ export const getAllTests = async (req, res) => {
 // Fetch all questions by testId
 export const getQuestionsByTestId = async (req, res) => {
   try {
-    const { testId } = req.query; // ✅ use query here
-    console.log(testId);
-    const questions = await Question.find({ testId });
+    const { testId } = req.query;
+    const category = req.body.selectedCategories;
+    console.log(category);
+    if (!testId) {
+      return res.status(400).json({ message: "Missing testId in body" });
+    }
+
+    const filter = { testId };
+
+    if (Array.isArray(category) && category.length > 0) {
+      filter.category = { $in: category };
+    }
+
+    const questions = await Question.find(filter).sort({ questionNo: 1 });
+
     res.status(200).json(questions);
   } catch (error) {
     res.status(500).json({ message: "Failed to fetch questions", error });

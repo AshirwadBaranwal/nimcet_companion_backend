@@ -8,6 +8,10 @@ const questionSchema = new mongoose.Schema(
       ref: "Test",
       required: true,
     },
+    questionNo: {
+      type: Number,
+      required: true,
+    },
     ques: {
       type: String,
       required: true,
@@ -58,6 +62,4 @@ const Question = mongoose.model("Question", questionSchema);
 
 questionSchema.index({ ques: "text" }); // for text search
 
-
 export default Question;
-
