@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import cors from "cors";
 import authRouter from "./route/auth-router.js";
 import cookieParser from "cookie-parser";
+import testRouter from "./route/test-router.js";
 
 const app = express();
 
@@ -16,7 +17,7 @@ app.use(
     allowedHeaders: ["Content-Type", "Authorization", "Cookie"], // Add this
     exposedHeaders: ["Set-Cookie"], // Add this
   })
-);  
+);
 
 dotenv.config({
   path: "./.env",
@@ -30,6 +31,7 @@ app.use((req, res, next) => {
 });
 
 app.use("/api/v1", authRouter);
+app.use("/api/v1/test", testRouter);
 
 // 404 handler should be last
 app.use((req, res) => {
