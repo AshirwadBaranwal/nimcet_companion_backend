@@ -11,7 +11,11 @@ const app = express();
 app.use(cookieParser());
 app.use(
   cors({
-    origin: ["http://localhost:5173", "https://nimcet-companion.vercel.app"],
+    origin: [
+      "http://localhost:5173",
+      "https://nimcet-companion.vercel.app",
+      "http://192.168.0.105:5173",
+    ],
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"],
     credentials: true,
     allowedHeaders: ["Content-Type", "Authorization", "Cookie"], // Add this

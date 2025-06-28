@@ -2,7 +2,6 @@ import mongoose from "mongoose";
 
 const testSchema = new mongoose.Schema(
   {
-    
     title: { type: String, required: true },
     description: String,
     category: [String],
@@ -18,6 +17,6 @@ const testSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-const Test = new mongoose.model("Test", testSchema);
+const Test = mongoose.model("Test", testSchema);
 
 export default Test;

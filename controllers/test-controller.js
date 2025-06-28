@@ -1,5 +1,6 @@
 // controllers/testController.js
 
+import QuestionGroup from "../models/quesGroupModel.js";
 import Question from "../models/quesModel.js";
 import Test from "../models/testModel.js";
 
@@ -115,7 +116,6 @@ export const getQuestionsByTestId = async (req, res) => {
   try {
     const { testId } = req.query;
     const category = req.body.selectedCategories;
-    console.log(category);
     if (!testId) {
       return res.status(400).json({ message: "Missing testId in body" });
     }
@@ -161,5 +161,93 @@ export const addMultipleQuestions = async (req, res) => {
     res.status(201).json({ message: "Questions added successfully", inserted });
   } catch (error) {
     res.status(500).json({ message: "Failed to add questions", error });
+  }
+};
+
+// POST /api/v1/group/create
+export const createQuestionGroup = async (req, res) => {
+  try {
+    const { title, instructions, testId, category, start, last } = req.body;
+
+    if (!instructions || !testId) {
+      return res
+        .status(400)
+        .json({ message: "instructions and testId are required" });
+    }
+
+    const newGroup = await QuestionGroup.create({
+      title,
+      instructions,
+      testId,
+      category,
+      start,
+      last,
+    });
+    res.status(201).json(newGroup);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to create question group", error });
+  }
+};
+
+
+// GET /api/v1/group?testId=123
+export const getGroupsByTestId = async (req, res) => {
+  try {
+    const { testId } = req.query;
+    const selectedCategories = req.body.selectedCategories;
+
+    if (!testId) {
+      return res.status(400).json({ message: "Missing testId in query" });
+    }
+
+    const filter = { testId };
+
+    if (Array.isArray(selectedCategories) && selectedCategories.length > 0) {
+      filter.category = { $in: selectedCategories };
+    }
+
+    const groups = await QuestionGroup.find(filter);
+    res.status(200).json(groups);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to fetch groups", error });
+  }
+};
+
+// DELETE /api/v1/group/:id
+export const deleteQuestionGroup = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const group = await QuestionGroup.findByIdAndDelete(id);
+
+    if (!group) {
+      return res.status(404).json({ message: "Group not found" });
+    }
+
+    res.status(200).json({ message: "Group deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to delete group", error });
+  }
+};
+
+
+// PUT /api/v1/group/:id
+export const updateQuestionGroup = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title, instructions } = req.body;
+
+    const updated = await QuestionGroup.findByIdAndUpdate(
+      id,
+      { title, instructions },
+      { new: true }
+    );
+
+    if (!updated) {
+      return res.status(404).json({ message: "Group not found" });
+    }
+
+    res.status(200).json(updated);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to update group", error });
   }
 };
