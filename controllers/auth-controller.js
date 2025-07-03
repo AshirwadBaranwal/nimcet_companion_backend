@@ -51,7 +51,7 @@ export const register = asyncHandler(async (req, res) => {
 export const verifyOTP = asyncHandler(async (req, res) => {
   const { email, otp } = req.body;
   console.log({ email, otp });
-  
+
   const user = await User.findOne({ email });
 
   if (!user || !user.otp || user.otp !== otp) {
@@ -70,17 +70,17 @@ export const verifyOTP = asyncHandler(async (req, res) => {
 
   try {
     // Log user in immediately
-    console.log('Generating token for verified user:', { 
+    console.log("Generating token for verified user:", {
       id: user._id.toString(),
       email: user.email,
-      isAdmin: user.isAdmin
+      isAdmin: user.isAdmin,
     });
-    
+
     const token = user.generateToken();
-    console.log('Token generated successfully, length:', token.length);
-    
+    console.log("Token generated successfully, length:", token.length);
+
     const isProduction = process.env.NODE_ENV === "production";
-    
+
     // Set cookie options
     const cookieOptions = {
       httpOnly: true,
@@ -88,17 +88,17 @@ export const verifyOTP = asyncHandler(async (req, res) => {
       sameSite: isProduction ? "None" : "Lax",
       maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
     };
-    
-    console.log('Setting cookie with options:', cookieOptions);
+
+    console.log("Setting cookie with options:", cookieOptions);
     res.cookie("token", token, cookieOptions);
-    
-    res.status(200).json({ 
+
+    res.status(200).json({
       message: "OTP verified and logged in successfully",
       userId: user._id,
-      isVerified: user.isVerified
+      isVerified: user.isVerified,
     });
-    
-    console.log('OTP verification response sent successfully');
+
+    console.log("OTP verification response sent successfully");
   } catch (error) {
     console.error("Token generation error:", error);
     throw new ApiError(500, "Error generating authentication token");
@@ -117,40 +117,51 @@ export const login = asyncHandler(async (req, res) => {
   const isValid = await user.comparePassword(password);
   if (!isValid) throw new ApiError(401, "Invalid credentials");
 
-  try {
-    console.log('Generating token for user:', { 
-      id: user._id.toString(),
-      email: user.email,
-      isAdmin: user.isAdmin
-    });
-    
-    const token = user.generateToken();
-    console.log('Token generated successfully, length:', token.length);
-    
-    const isProduction = process.env.NODE_ENV === "production";
-    console.log('Environment:', { isProduction, NODE_ENV: process.env.NODE_ENV });
+  const isVerified = user.isVerified;
+  if (isVerified) {
+    try {
+      console.log("Generating token for user:", {
+        id: user._id.toString(),
+        email: user.email,
+        isAdmin: user.isAdmin,
+      });
 
-    // Set cookie options
-    const cookieOptions = {
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: isProduction ? "None" : "Lax",
-      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-    };
-    
-    console.log('Setting cookie with options:', cookieOptions);
-    res.cookie("token", token, cookieOptions);
+      const token = user.generateToken();
+      console.log("Token generated successfully, length:", token.length);
 
+      const isProduction = process.env.NODE_ENV === "production";
+      console.log("Environment:", {
+        isProduction,
+        NODE_ENV: process.env.NODE_ENV,
+      });
+
+      // Set cookie options
+      const cookieOptions = {
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: isProduction ? "None" : "Lax",
+        maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+      };
+
+      console.log("Setting cookie with options:", cookieOptions);
+
+      res.cookie("token", token, cookieOptions);
+      res.status(200).json({
+        msg: "Login successful",
+        userId: user._id,
+        isVerified: user.isVerified,
+      });
+      console.log("Login response sent successfully");
+    } catch (error) {
+      console.error("Token generation error:", error);
+      throw new ApiError(500, "Error generating authentication token");
+    }
+  } else {
     res.status(200).json({
-      msg: "Login successful",
       userId: user._id,
       isVerified: user.isVerified,
+      msg: "Not verified,Verify first",
     });
-    
-    console.log('Login response sent successfully');
-  } catch (error) {
-    console.error("Token generation error:", error);
-    throw new ApiError(500, "Error generating authentication token");
   }
 });
 
@@ -172,31 +183,54 @@ export const resendOTP = asyncHandler(async (req, res) => {
 
   res.status(200).json({ msg: "OTP resent" });
 });
+//------------------------------------------
+// RESTART VERIFICATION
+//------------------------------------------
+export const restartVerification = asyncHandler(async (req, res) => {
+  const { email } = req.body;
 
+  const user = await User.findOne({ email });
+  if (!user) throw new ApiError(404, "User not found");
+
+  // Generate new OTP
+  const otp = generateOTP();
+  user.otp = otp;
+  user.otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes expiry
+  user.isVerified = false; // Mark as unverified again
+  await user.save();
+
+  // Send email with OTP
+  await sendEmail(email, "Email Verification", generateOTPEmail(otp));
+
+  res.status(200).json({
+    msg: "Verification process restarted. OTP sent to your email.",
+    email: user.email,
+  });
+});
 //------------------------------------------
 // USER DATA
 //------------------------------------------
 export const user = asyncHandler(async (req, res) => {
-  console.log('User route accessed');
-  
+  console.log("User route accessed");
+
   try {
     // Check if req.user exists
     if (!req.user) {
-      console.error('req.user is undefined or null');
-      throw new ApiError(500, 'User data not available');
+      console.error("req.user is undefined or null");
+      throw new ApiError(500, "User data not available");
     }
-    
-    console.log('User data retrieved successfully:', { 
+
+    console.log("User data retrieved successfully:", {
       id: req.user._id,
       username: req.user.username,
       email: req.user.email,
       isVerified: req.user.isVerified,
-      isAdmin: req.user.isAdmin
+      isAdmin: req.user.isAdmin,
     });
-    
+
     res.status(200).json(req.user);
   } catch (error) {
-    console.error('Error in user route:', error);
+    console.error("Error in user route:", error);
     throw error;
   }
 });
