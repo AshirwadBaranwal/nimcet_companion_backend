@@ -7,6 +7,10 @@ import cookieParser from "cookie-parser";
 import testRouter from "./route/test-router.js";
 import errorMiddleware from "./middleware/errMiddleware.js";
 
+dotenv.config({
+  path: "./.env",
+});
+
 const app = express();
 
 app.use(cookieParser());
@@ -19,10 +23,6 @@ app.use(
     exposedHeaders: ["Set-Cookie"], // Add this
   })
 );
-
-dotenv.config({
-  path: "./.env",
-});
 
 app.use(express.json());
 

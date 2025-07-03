@@ -19,7 +19,7 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
-  isverified: {
+  isVerified: {
     type: Boolean,
     default: false,
   },
@@ -27,10 +27,9 @@ const userSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
-  fogotPasswordToken: String,
-  forgotPasswordTokenExpiry: Date,
-  verifyToken: String,
-  verifyTokenExpiry: Date,
+  otp: String,
+  otpExpires: Date,
+  isVerified: { type: Boolean, default: false },
 });
 
 userSchema.pre("save", async function (next) {
