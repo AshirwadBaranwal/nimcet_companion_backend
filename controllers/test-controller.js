@@ -3,251 +3,142 @@
 import QuestionGroup from "../models/quesGroupModel.js";
 import Question from "../models/quesModel.js";
 import Test from "../models/testModel.js";
+import { asyncHandler } from "../utils/asyncHandler.js";
+import { ApiError } from "../utils/ApiError.js";
 
-// Create Test Controller
-export const createTest = async (req, res) => {
-  try {
-    const {
-      title,
-      description,
-      category,
-      durationMinutes,
-      totalQuestions,
-      totalMarks,
-      isActive,
-      startTime,
-      endTime,
-      type,
-      tags,
-    } = req.body;
+// Create Test
+export const createTest = asyncHandler(async (req, res) => {
+  const {
+    title,
+    description,
+    category,
+    durationMinutes,
+    totalQuestions,
+    totalMarks,
+    isActive,
+    startTime,
+    endTime,
+    type,
+    tags,
+  } = req.body;
 
-    // Validation
-    if (!title) {
-      return res.status(400).json({
-        success: false,
-        message: "Title is required",
-      });
-    }
-
-    if (type && !["practice", "mock"].includes(type)) {
-      return res.status(400).json({
-        success: false,
-        message: "Type must be either 'practice' or 'mock'",
-      });
-    }
-
-    // Validate date ranges if both startTime and endTime are provided
-    if (startTime && endTime) {
-      const start = new Date(startTime);
-      const end = new Date(endTime);
-
-      if (start >= end) {
-        return res.status(400).json({
-          success: false,
-          message: "End time must be after start time",
-        });
-      }
-    }
-
-    // Create new test
-    const newTest = new Test({
-      title: title.trim(),
-      description: description?.trim() || "",
-      category: Array.isArray(category)
-        ? category.filter((cat) => cat.trim())
-        : [],
-      durationMinutes: durationMinutes ? parseInt(durationMinutes) : undefined,
-      totalQuestions: totalQuestions ? parseInt(totalQuestions) : undefined,
-      totalMarks: totalMarks ? parseInt(totalMarks) : undefined,
-      isActive: isActive !== undefined ? Boolean(isActive) : true,
-      startTime: startTime ? new Date(startTime) : undefined,
-      endTime: endTime ? new Date(endTime) : undefined,
-      type: type || "practice",
-      tags: Array.isArray(tags) ? tags.filter((tag) => tag.trim()) : [],
-    });
-
-    const savedTest = await newTest.save();
-
-    res.status(201).json({
-      success: true,
-      message: "Test created successfully",
-      data: savedTest,
-    });
-  } catch (error) {
-    console.error("Error creating test:", error);
-
-    if (error.name === "ValidationError") {
-      const errors = Object.values(error.errors).map((err) => err.message);
-      return res.status(400).json({
-        success: false,
-        message: "Validation error",
-        errors,
-      });
-    }
-
-    res.status(500).json({
-      success: false,
-      message: "Internal server error",
-      error: process.env.NODE_ENV === "development" ? error.message : undefined,
-    });
+  if (!title) throw new ApiError(400, "Test title is required");
+  if (type && !["practice", "mock"].includes(type)) {
+    throw new ApiError(400, "Test type must be either 'practice' or 'mock'");
   }
-};
-
-export const getAllTests = async (req, res) => {
-  try {
-    const tests = await Test.find();
-    if (tests) {
-      return res.status(200).json({
-        success: true,
-        data: tests,
-      });
-    } else {
-      return res.status(500).json({
-        success: false,
-      });
-    }
-  } catch (error) {
-    console.log(error);
+  if (startTime && endTime && new Date(startTime) >= new Date(endTime)) {
+    throw new ApiError(400, "End time must be after start time");
   }
-};
 
-// Fetch all questions by testId
-export const getQuestionsByTestId = async (req, res) => {
-  try {
-    const { testId } = req.query;
-    const category = req.body.selectedCategories;
-    if (!testId) {
-      return res.status(400).json({ message: "Missing testId in body" });
-    }
+  const newTest = new Test({
+    title: title.trim(),
+    description: description?.trim() || "",
+    category: Array.isArray(category)
+      ? category.filter((cat) => cat.trim())
+      : [],
+    durationMinutes: durationMinutes ? parseInt(durationMinutes) : undefined,
+    totalQuestions: totalQuestions ? parseInt(totalQuestions) : undefined,
+    totalMarks: totalMarks ? parseInt(totalMarks) : undefined,
+    isActive: isActive !== undefined ? Boolean(isActive) : true,
+    startTime: startTime ? new Date(startTime) : undefined,
+    endTime: endTime ? new Date(endTime) : undefined,
+    type: type || "practice",
+    tags: Array.isArray(tags) ? tags.filter((tag) => tag.trim()) : [],
+  });
 
-    const filter = { testId };
+  const savedTest = await newTest.save();
+  res
+    .status(201)
+    .json({ message: "Test created successfully", data: savedTest });
+});
 
-    if (Array.isArray(category) && category.length > 0) {
-      filter.category = { $in: category };
-    }
+export const getAllTests = asyncHandler(async (req, res) => {
+  const tests = await Test.find();
+  if (!tests) throw new ApiError(404, "No tests found");
+  res.status(200).json({ data: tests });
+});
 
-    const questions = await Question.find(filter).sort({ questionNo: 1 });
+export const getQuestionsByTestId = asyncHandler(async (req, res) => {
+  const { testId } = req.query;
+  const category = req.body.selectedCategories;
+  if (!testId) throw new ApiError(400, "Missing testId in request");
 
-    res.status(200).json(questions);
-  } catch (error) {
-    res.status(500).json({ message: "Failed to fetch questions", error });
+  const filter = { testId };
+  if (Array.isArray(category) && category.length > 0) {
+    filter.category = { $in: category };
   }
-};
 
-// Add single question
-export const addSingleQuestion = async (req, res) => {
-  try {
-    const newQuestion = new Question(req.body);
-    await newQuestion.save();
-    res
-      .status(201)
-      .json({ message: "Question added successfully", question: newQuestion });
-  } catch (error) {
-    res.status(400).json({ message: "Failed to add question", error });
-  }
-};
+  const questions = await Question.find(filter).sort({ questionNo: 1 });
+  res.status(200).json(questions);
+});
 
-// Add multiple questions at once
-export const addMultipleQuestions = async (req, res) => {
-  try {
-    const questionsArray = req.body.questions;
-    if (!Array.isArray(questionsArray)) {
-      return res
-        .status(400)
-        .json({ message: "Invalid format: Expected an array" });
-    }
+export const addSingleQuestion = asyncHandler(async (req, res) => {
+  const newQuestion = new Question(req.body);
+  await newQuestion.save();
+  res
+    .status(201)
+    .json({ message: "Question added successfully", question: newQuestion });
+});
 
-    const inserted = await Question.insertMany(questionsArray);
-    res.status(201).json({ message: "Questions added successfully", inserted });
-  } catch (error) {
-    res.status(500).json({ message: "Failed to add questions", error });
-  }
-};
-
-// POST /api/v1/group/create
-export const createQuestionGroup = async (req, res) => {
-  try {
-    const { title, instructions, testId, category, start, last } = req.body;
-
-    if (!instructions || !testId) {
-      return res
-        .status(400)
-        .json({ message: "instructions and testId are required" });
-    }
-
-    const newGroup = await QuestionGroup.create({
-      title,
-      instructions,
-      testId,
-      category,
-      start,
-      last,
-    });
-    res.status(201).json(newGroup);
-  } catch (error) {
-    res.status(500).json({ message: "Failed to create question group", error });
-  }
-};
-
-
-// GET /api/v1/group?testId=123
-export const getGroupsByTestId = async (req, res) => {
-  try {
-    const { testId } = req.query;
-    const selectedCategories = req.body.selectedCategories;
-
-    if (!testId) {
-      return res.status(400).json({ message: "Missing testId in query" });
-    }
-
-    const filter = { testId };
-
-    if (Array.isArray(selectedCategories) && selectedCategories.length > 0) {
-      filter.category = { $in: selectedCategories };
-    }
-
-    const groups = await QuestionGroup.find(filter);
-    res.status(200).json(groups);
-  } catch (error) {
-    res.status(500).json({ message: "Failed to fetch groups", error });
-  }
-};
-
-// DELETE /api/v1/group/:id
-export const deleteQuestionGroup = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const group = await QuestionGroup.findByIdAndDelete(id);
-
-    if (!group) {
-      return res.status(404).json({ message: "Group not found" });
-    }
-
-    res.status(200).json({ message: "Group deleted successfully" });
-  } catch (error) {
-    res.status(500).json({ message: "Failed to delete group", error });
-  }
-};
-
-
-// PUT /api/v1/group/:id
-export const updateQuestionGroup = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { title, instructions } = req.body;
-
-    const updated = await QuestionGroup.findByIdAndUpdate(
-      id,
-      { title, instructions },
-      { new: true }
+export const addMultipleQuestions = asyncHandler(async (req, res) => {
+  const questionsArray = req.body.questions;
+  if (!Array.isArray(questionsArray)) {
+    throw new ApiError(
+      400,
+      "Invalid request body: 'questions' must be an array"
     );
-
-    if (!updated) {
-      return res.status(404).json({ message: "Group not found" });
-    }
-
-    res.status(200).json(updated);
-  } catch (error) {
-    res.status(500).json({ message: "Failed to update group", error });
   }
-};
+
+  const inserted = await Question.insertMany(questionsArray);
+  res.status(201).json({ message: "Questions added successfully", inserted });
+});
+
+export const createQuestionGroup = asyncHandler(async (req, res) => {
+  const { title, instructions, testId, category, start, last } = req.body;
+  if (!instructions || !testId) {
+    throw new ApiError(400, "Instructions and testId are required");
+  }
+
+  const newGroup = await QuestionGroup.create({
+    title,
+    instructions,
+    testId,
+    category,
+    start,
+    last,
+  });
+  res.status(201).json({ message: "Question group created", group: newGroup });
+});
+
+export const getGroupsByTestId = asyncHandler(async (req, res) => {
+  const { testId } = req.query;
+  const selectedCategories = req.body.selectedCategories;
+  if (!testId) throw new ApiError(400, "Missing testId in query");
+
+  const filter = { testId };
+  if (Array.isArray(selectedCategories) && selectedCategories.length > 0) {
+    filter.category = { $in: selectedCategories };
+  }
+
+  const groups = await QuestionGroup.find(filter);
+  res.status(200).json(groups);
+});
+
+export const deleteQuestionGroup = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const group = await QuestionGroup.findByIdAndDelete(id);
+  if (!group) throw new ApiError(404, "Question group not found");
+  res.status(200).json({ message: "Question group deleted" });
+});
+
+export const updateQuestionGroup = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { title, instructions } = req.body;
+  const updated = await QuestionGroup.findByIdAndUpdate(
+    id,
+    { title, instructions },
+    { new: true }
+  );
+  if (!updated) throw new ApiError(404, "Question group not found");
+  res.status(200).json({ message: "Question group updated", updated });
+});

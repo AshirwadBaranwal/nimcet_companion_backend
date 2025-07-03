@@ -1,99 +1,86 @@
 import User from "../models/userModel.js";
+import { asyncHandler } from "../utils/asyncHandler.js";
+import { ApiError } from "../utils/ApiError.js";
 
 //-----------
-//HOME
+// HOME
 //-----------
-
-export const home = async (req, res) => {
-  try {
-    res.status(200).send("We are on home page of studymat");
-  } catch (error) {
-    console.log(error);
-  }
-};
+export const home = asyncHandler(async (req, res) => {
+  res.status(200).send("We are on home page of studymat");
+});
 
 //------------
-// register
+// REGISTER
 //------------
+export const register = asyncHandler(async (req, res) => {
+  const { username, email, phone, password } = req.body;
 
-export const register = async (req, res) => {
-  try {
-    const { username, email, phone, password } = req.body;
-
-    const userExist = await User.findOne({ email });
-    if (userExist) {
-      return res.status(400).send({ message: "user already exists." });
-    }
-
-    const userCreated = await User.create({ username, email, phone, password });
-    const token = await userCreated.generateToken();
-    const isProduction = process.env.NODE_ENV === "production";
-
-    res.cookie("token", token, {
-      httpOnly: true,
-      secure: isProduction, // Only secure in production
-      sameSite: isProduction ? "None" : "Lax", // Use Lax for localhost testing
-    });
-    res.status(200).json({
-      msg: "registered successfully",
-      userID: userCreated._id.toString(),
-    });
-  } catch (error) {
-    console.log(error);
+  const userExist = await User.findOne({ email });
+  if (userExist) {
+    throw new ApiError(400, "User already exists.");
   }
-};
+
+  const userCreated = await User.create({ username, email, phone, password });
+  const token = await userCreated.generateToken();
+  const isProduction = process.env.NODE_ENV === "production";
+
+  res.cookie("token", token, {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? "None" : "Lax",
+    maxAge: 30 * 24 * 60 * 60 * 1000,
+  });
+
+  res.status(200).json({
+    msg: "Registered successfully",
+    userID: userCreated._id.toString(),
+  });
+});
 
 //-------------
-// Login
+// LOGIN
 //------------
+export const login = asyncHandler(async (req, res) => {
+  const { email, password } = req.body;
 
-export const login = async (req, res) => {
-  try {
-    const { email, password } = req.body;
-    const userExist = await User.findOne({ email });
-    if (!userExist) {
-      return res.status(401).json({ message: "Bad credentils" });
-    }
-
-    const user = await userExist.comparePassword(password);
-    if (user) {
-      const token = await userExist.generateToken();
-      const isProduction = process.env.NODE_ENV === "production";
-
-      res.cookie("token", token, {
-        httpOnly: true,
-        secure: isProduction, // Only secure in production
-        sameSite: isProduction ? "None" : "Lax", // Use Lax for localhost testing
-      });
-      res.status(200).json({
-        msg: "Login Successfull",
-        userId: userExist._id.toString(),
-      });
-    } else {
-      return res.status(401).json({ message: "email or password is invalid." });
-    }
-  } catch (error) {
-    return res.status(500).json({ message: "internal server error" });
+  const userExist = await User.findOne({ email });
+  if (!userExist) {
+    throw new ApiError(401, "Bad credentials");
   }
-};
 
-//------------------------------------------
-// getting user data-user route controller
-//------------------------------------------
-
-export const user = async (req, res) => {
-  try {
-    const userdata = req.user;
-    return res.status(200).json(userdata);
-  } catch (error) {
-    console.log("error from user Router", error);
+  const user = await userExist.comparePassword(password);
+  if (!user) {
+    throw new ApiError(401, "Email or password is invalid.");
   }
-};
-//------------------------------------------
-// getting user data-user route controller
-//------------------------------------------
 
-export const logout = async (req, res) => {
+  const token = await userExist.generateToken();
+  const isProduction = process.env.NODE_ENV === "production";
+
+  res.cookie("token", token, {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? "None" : "Lax",
+    maxAge: 30 * 24 * 60 * 60 * 1000,
+  });
+
+  res.status(200).json({
+    msg: "Login Successful",
+    userId: userExist._id.toString(),
+  });
+});
+
+//------------------------------------------
+// USER DATA
+//------------------------------------------
+export const user = asyncHandler(async (req, res) => {
+  const userdata = req.user;
+  res.status(200).json(userdata);
+});
+
+//------------------------------------------
+// LOGOUT
+//------------------------------------------
+export const logout = asyncHandler(async (req, res) => {
   res.clearCookie("token");
   res.json({ msg: "Logged out" });
-};
+});

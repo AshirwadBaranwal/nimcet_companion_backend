@@ -5,6 +5,7 @@ import cors from "cors";
 import authRouter from "./route/auth-router.js";
 import cookieParser from "cookie-parser";
 import testRouter from "./route/test-router.js";
+import errorMiddleware from "./middleware/errMiddleware.js";
 
 const app = express();
 
@@ -37,6 +38,8 @@ app.use("/api/v1/test", testRouter);
 app.use((req, res) => {
   res.status(404).json({ message: "Route Not Found" });
 });
+
+app.use(errorMiddleware);
 
 dbconnect().then(() => {
   app.listen(process.env.PORT || 5000, () => {

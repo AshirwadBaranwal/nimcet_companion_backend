@@ -1,12 +1,11 @@
 import jwt from "jsonwebtoken";
 import User from "../models/userModel.js";
+import { ApiError } from "../utils/ApiError.js";
 
 const Authmiddleware = async (req, res, next) => {
   const token = req.cookies.token;
   if (!token) {
-    return res
-      .status(401)
-      .json({ msg: "Unauthorised HTTP,  token not provided" });
+    throw new ApiError(400, "Unauthorised HTTP! token not provided");
   }
   const jwtToken = token.replace("Bearer", "").trim();
   try {
