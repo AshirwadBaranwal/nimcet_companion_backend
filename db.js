@@ -6,12 +6,11 @@ const dbconnect = async () => {
       `${process.env.MONGODB_URI}`
     );
     console.log(
-      `mongodb has connected on the db host : ${connectioninstance.connection.host}`
+      `MongoDB has connected on the db host: ${connectioninstance.connection.host}`
     );
   } catch (error) {
-    console.log("MongoDB connection error", error);
+    console.error("MongoDB connection error:", error);
     process.exit(1);
-    z;
   }
 };
 

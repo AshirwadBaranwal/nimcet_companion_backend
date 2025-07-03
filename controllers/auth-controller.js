@@ -48,39 +48,62 @@ export const register = asyncHandler(async (req, res) => {
 // VERIFY OTP
 // ---------------------------
 
-export const verifyOTP = async (req, res) => {
-  try {
-    const { email, otp } = req.body;
-    console.log({ email, otp });
-    const user = await User.findOne({ email });
+export const verifyOTP = asyncHandler(async (req, res) => {
+  const { email, otp } = req.body;
+  console.log({ email, otp });
+  
+  const user = await User.findOne({ email });
 
-    if (!user || !user.otp || user.otp !== otp) {
-      return res.status(400).json({ message: "Invalid or expired OTP" });
-    }
-
-    if (user.otp.expiresAt < Date.now()) {
-      return res.status(400).json({ message: "OTP expired" });
-    }
-
-    // Mark user as verified
-    user.isVerified = true;
-    user.otp = undefined;
-    await user.save();
-
-    // Log user in immediately
-    const token = user.generateToken(); // assume you have this
-    res
-      .cookie("token", token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        maxAge: 1000 * 60 * 60 * 24,
-      })
-      .json({ message: "OTP verified and logged in successfully" });
-  } catch (err) {
-    res.status(500).json({ message: "Something went wrong" });
+  if (!user || !user.otp || user.otp !== otp) {
+    throw new ApiError(400, "Invalid or expired OTP");
   }
-};
+
+  if (user.otpExpires < Date.now()) {
+    throw new ApiError(400, "OTP expired");
+  }
+
+  // Mark user as verified
+  user.isVerified = true;
+  user.otp = undefined;
+  user.otpExpires = undefined;
+  await user.save();
+
+  try {
+    // Log user in immediately
+    console.log('Generating token for verified user:', { 
+      id: user._id.toString(),
+      email: user.email,
+      isAdmin: user.isAdmin
+    });
+    
+    const token = user.generateToken();
+    console.log('Token generated successfully, length:', token.length);
+    
+    const isProduction = process.env.NODE_ENV === "production";
+    
+    // Set cookie options
+    const cookieOptions = {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: isProduction ? "None" : "Lax",
+      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+    };
+    
+    console.log('Setting cookie with options:', cookieOptions);
+    res.cookie("token", token, cookieOptions);
+    
+    res.status(200).json({ 
+      message: "OTP verified and logged in successfully",
+      userId: user._id,
+      isVerified: user.isVerified
+    });
+    
+    console.log('OTP verification response sent successfully');
+  } catch (error) {
+    console.error("Token generation error:", error);
+    throw new ApiError(500, "Error generating authentication token");
+  }
+});
 
 // ---------------------------
 // LOGIN
@@ -94,21 +117,41 @@ export const login = asyncHandler(async (req, res) => {
   const isValid = await user.comparePassword(password);
   if (!isValid) throw new ApiError(401, "Invalid credentials");
 
-  const token = user.generateToken();
-  const isProduction = process.env.NODE_ENV === "production";
+  try {
+    console.log('Generating token for user:', { 
+      id: user._id.toString(),
+      email: user.email,
+      isAdmin: user.isAdmin
+    });
+    
+    const token = user.generateToken();
+    console.log('Token generated successfully, length:', token.length);
+    
+    const isProduction = process.env.NODE_ENV === "production";
+    console.log('Environment:', { isProduction, NODE_ENV: process.env.NODE_ENV });
 
-  res.cookie("token", token, {
-    httpOnly: true,
-    secure: isProduction,
-    sameSite: isProduction ? "None" : "Lax",
-    maxAge: 30 * 24 * 60 * 60 * 1000,
-  });
+    // Set cookie options
+    const cookieOptions = {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: isProduction ? "None" : "Lax",
+      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+    };
+    
+    console.log('Setting cookie with options:', cookieOptions);
+    res.cookie("token", token, cookieOptions);
 
-  res.status(200).json({
-    msg: "Login successful",
-    userId: user._id,
-    isVerified: user.isVerified,
-  });
+    res.status(200).json({
+      msg: "Login successful",
+      userId: user._id,
+      isVerified: user.isVerified,
+    });
+    
+    console.log('Login response sent successfully');
+  } catch (error) {
+    console.error("Token generation error:", error);
+    throw new ApiError(500, "Error generating authentication token");
+  }
 });
 
 // ---------------------------
@@ -134,8 +177,28 @@ export const resendOTP = asyncHandler(async (req, res) => {
 // USER DATA
 //------------------------------------------
 export const user = asyncHandler(async (req, res) => {
-  const userdata = req.user;
-  res.status(200).json(userdata);
+  console.log('User route accessed');
+  
+  try {
+    // Check if req.user exists
+    if (!req.user) {
+      console.error('req.user is undefined or null');
+      throw new ApiError(500, 'User data not available');
+    }
+    
+    console.log('User data retrieved successfully:', { 
+      id: req.user._id,
+      username: req.user.username,
+      email: req.user.email,
+      isVerified: req.user.isVerified,
+      isAdmin: req.user.isAdmin
+    });
+    
+    res.status(200).json(req.user);
+  } catch (error) {
+    console.error('Error in user route:', error);
+    throw error;
+  }
 });
 
 //------------------------------------------

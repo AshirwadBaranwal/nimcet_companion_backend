@@ -11,6 +11,17 @@ dotenv.config({
   path: "./.env",
 });
 
+// Check for required environment variables
+const requiredEnvVars = ['MONGODB_URI', 'JWT_SECRET_KEY', 'PORT'];
+requiredEnvVars.forEach(varName => {
+  if (!process.env[varName]) {
+    console.error(`Error: Environment variable ${varName} is not set`);
+    process.exit(1);
+  }
+});
+
+console.log('Environment variables validated successfully');
+
 const app = express();
 
 app.use(cookieParser());

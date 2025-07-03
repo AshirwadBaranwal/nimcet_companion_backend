@@ -46,7 +46,7 @@ userSchema.pre("save", async function (next) {
   }
 });
 
-userSchema.methods.generateToken = async function () {
+userSchema.methods.generateToken = function () {
   try {
     return jwt.sign(
       {
@@ -60,7 +60,8 @@ userSchema.methods.generateToken = async function () {
       }
     );
   } catch (error) {
-    console.log("jsonwebtoken", error);
+    console.log("jsonwebtoken error:", error);
+    throw error; // Re-throw the error to be handled by the caller
   }
 };
 
