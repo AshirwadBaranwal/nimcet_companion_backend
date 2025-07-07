@@ -7,6 +7,7 @@ import {
   register,
   resendOTP,
   restartVerification,
+  updateUser,
   user,
   verifyOTP,
 } from "../controllers/auth-controller.js";
@@ -21,5 +22,6 @@ authRouter.route("/login").post(login);
 authRouter.route("/logout").post(logout);
 authRouter.post("/restart-verification", restartVerification);
 authRouter.route("/user").get(Authmiddleware, user);
+authRouter.route("/user/update").put(Authmiddleware, updateUser);
 
 export default authRouter;

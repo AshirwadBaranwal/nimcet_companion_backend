@@ -207,6 +207,7 @@ export const restartVerification = asyncHandler(async (req, res) => {
     email: user.email,
   });
 });
+
 //------------------------------------------
 // USER DATA
 //------------------------------------------
@@ -233,6 +234,41 @@ export const user = asyncHandler(async (req, res) => {
     console.error("Error in user route:", error);
     throw error;
   }
+});
+//------------------------------------------
+// USER DATA
+//------------------------------------------
+
+export const updateUser = asyncHandler(async (req, res) => {
+  const userId = req.user?._id;
+
+  if (!userId) {
+    throw new ApiError(401, "Unauthorized");
+  }
+
+  const allowedFields = ["username", "phone", "dob", "state", "city"];
+  const updates = {};
+
+  for (const field of allowedFields) {
+    if (req.body[field] !== undefined) {
+      updates[field] = req.body[field];
+    }
+  }
+
+  const updatedUser = await User.findByIdAndUpdate(userId, updates, {
+    new: true,
+    runValidators: true,
+  }).select("-password -otp -otpExpiry");
+
+  if (!updatedUser) {
+    throw new ApiError(404, "User not found");
+  }
+
+  res.status(200).json({
+    success: true,
+    message: "Profile updated successfully",
+    user: updatedUser,
+  });
 });
 
 //------------------------------------------

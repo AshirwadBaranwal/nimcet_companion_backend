@@ -9,37 +9,41 @@ const Authmiddleware = asyncHandler(async (req, res, next) => {
     if (!token) {
       throw new ApiError(401, "Unauthorized: Token not provided");
     }
-    
+
     // Remove Bearer prefix if present
     const jwtToken = token.replace("Bearer", "").trim();
-    
+
     // Log token details (without exposing the full token)
-    console.log('Token verification attempt:', { 
+    console.log("Token verification attempt:", {
       tokenLength: jwtToken.length,
-      tokenPrefix: jwtToken.substring(0, 10) + '...',
-      secretKeyLength: process.env.JWT_SECRET_KEY ? process.env.JWT_SECRET_KEY.length : 0
+      tokenPrefix: jwtToken.substring(0, 10) + "...",
+      secretKeyLength: process.env.JWT_SECRET_KEY
+        ? process.env.JWT_SECRET_KEY.length
+        : 0,
     });
-    
+
     // Verify the token
     const decoded = jwt.verify(jwtToken, process.env.JWT_SECRET_KEY);
-    console.log('Token decoded successfully:', { 
+    console.log("Token decoded successfully:", {
       email: decoded.email,
       userID: decoded.userID,
-      isAdmin: decoded.isAdmin
+      isAdmin: decoded.isAdmin,
     });
-    
+
     // Find the user
-    const userdata = await User.findOne({ email: decoded.email }).select("-password");
-    
+    const userdata = await User.findOne({ email: decoded.email }).select(
+      "-password"
+    );
+
     if (!userdata) {
       throw new ApiError(401, "Unauthorized: User not found");
     }
-    
+
     // Attach user data to request
     req.user = userdata;
     req.token = jwtToken;
     req.userId = userdata._id.toString();
-    
+
     next();
   } catch (error) {
     console.error("Authentication error:", error);
