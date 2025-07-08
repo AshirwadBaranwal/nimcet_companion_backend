@@ -87,6 +87,7 @@ export const verifyOTP = asyncHandler(async (req, res) => {
       secure: isProduction,
       sameSite: isProduction ? "None" : "Lax",
       maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+      path: "/",
     };
 
     console.log("Setting cookie with options:", cookieOptions);
@@ -141,6 +142,7 @@ export const login = asyncHandler(async (req, res) => {
         secure: isProduction,
         sameSite: isProduction ? "None" : "Lax",
         maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+        path: "/",
       };
 
       console.log("Setting cookie with options:", cookieOptions);
@@ -275,6 +277,19 @@ export const updateUser = asyncHandler(async (req, res) => {
 // LOGOUT
 //------------------------------------------
 export const logout = asyncHandler(async (req, res) => {
-  res.clearCookie("token");
-  res.json({ msg: "Logged out" });
+  try {
+    const isProduction = process.env.NODE_ENV === "production";
+
+    res.clearCookie("token", {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: isProduction ? "None" : "Lax",
+      path: "/", // ← IMPORTANT: must match
+    });
+
+    res.json({ msg: "Logged out" });
+  } catch (error) {
+    console.log("Logout error:", error);
+    res.status(500).json({ msg: "Logout failed" });
+  }
 });
